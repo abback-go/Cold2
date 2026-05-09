@@ -1,0 +1,22 @@
+{
+  "name": "cold-wave-dodge",
+  "version": "1.0.0",
+  "description": "한파 피하기 게임 — 브라우저 Canvas 피하기 게임",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "keywords": ["game", "canvas", "dodge"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "vite": "^8.0.11",
+    "vitest": "^4.1.5"
+  }
+}
