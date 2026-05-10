@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>간단 TODO</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: #0a1020;
+        color: #e3f2fd;
+        font-family: -apple-system, system-ui, "Segoe UI", "Apple SD Gothic Neo",
+          "Malgun Gothic", sans-serif;
+        padding: 32px 16px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 16px;
+        font-weight: 700;
+      }
+      .app {
+        width: 100%;
+        max-width: 480px;
+        background: #0f1929;
+        border: 1px solid #2c3e50;
+        border-radius: 10px;
+        padding: 16px;
+      }
+      form {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      input[type="text"] {
+        flex: 1;
+        min-width: 0;
+        padding: 10px 12px;
+        font-size: 15px;
+        border-radius: 6px;
+        border: 1px solid #2c3e50;
+        background: #0a1020;
+        color: #e3f2fd;
+        outline: none;
+      }
+      input[type="text"]:focus {
+        border-color: #4a90e2;
+      }
+      button {
+        padding: 10px 14px;
+        font-size: 15px;
+        border-radius: 6px;
+        border: 1px solid #4a90e2;
+        background: #1e3a5f;
+        color: #e3f2fd;
+        cursor: pointer;
+      }
+      button:hover { background: #2a4a73; }
+      .filters {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+        font-size: 13px;
+      }
+      .filters button {
+        padding: 6px 10px;
+        font-size: 13px;
+        background: transparent;
+        border-color: #2c3e50;
+        opacity: 0.7;
+      }
+      .filters button.active {
+        opacity: 1;
+        border-color: #4a90e2;
+        background: #1e3a5f;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 4px;
+        border-bottom: 1px solid #1a2638;
+      }
+      li:last-child { border-bottom: none; }
+      li input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #4a90e2;
+      }
+      li .text {
+        flex: 1;
+        word-break: break-word;
+      }
+      li.done .text {
+        text-decoration: line-through;
+        opacity: 0.5;
+      }
+      li .del {
+        padding: 4px 8px;
+        font-size: 12px;
+        border-color: #5a3030;
+        background: transparent;
+        color: #d88;
+      }
+      li .del:hover { background: #3a1818; }
+      .empty {
+        text-align: center;
+        opacity: 0.5;
+        padding: 20px 0;
+        font-size: 14px;
+      }
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+        font-size: 13px;
+        opacity: 0.7;
+      }
+      .clear {
+        padding: 4px 8px;
+        font-size: 12px;
+        background: transparent;
+        border-color: #2c3e50;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📝 간단 TODO</h1>
+    <div class="app">
+      <form id="add-form">
+        <input
+          type="text"
+          id="input"
+          placeholder="할 일을 입력하세요"
+          autocomplete="off"
+          maxlength="200"
+          required
+        />
+        <button type="submit">추가</button>
+      </form>
+      <div class="filters">
+        <button type="button" data-filter="all" class="active">전체</button>
+        <button type="button" data-filter="active">진행 중</button>
+        <button type="button" data-filter="done">완료</button>
+      </div>
+      <ul id="list"></ul>
+      <div class="footer">
+        <span id="count">0개 남음</span>
+        <button type="button" class="clear" id="clear-done">완료 항목 삭제</button>
+      </div>
+    </div>
+
+    <script type="module">
+      const STORAGE_KEY = 'simple-todo:v1';
+
+      /** @type {{id:number,text:string,done:boolean}[]} */
+      let todos = load();
+      let filter = 'all';
+
+      const $form = document.getElementById('add-form');
+      const $input = document.getElementById('input');
+      const $list = document.getElementById('list');
+      const $count = document.getElementById('count');
+      const $clearDone = document.getElementById('clear-done');
+      const $filters = document.querySelectorAll('.filters button');
+
+      function load() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function save() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+      }
+
+      function visible() {
+        if (filter === 'active') return todos.filter((t) => !t.done);
+        if (filter === 'done') return todos.filter((t) => t.done);
+        return todos;
+      }
+
+      function render() {
+        const items = visible();
+        $list.innerHTML = '';
+        if (items.length === 0) {
+          const li = document.createElement('li');
+          li.className = 'empty';
+          li.textContent =
+            filter === 'done'
+              ? '완료된 항목이 없어요'
+              : filter === 'active'
+              ? '진행 중인 항목이 없어요'
+              : '할 일이 없어요. 위에서 추가해 보세요!';
+          $list.appendChild(li);
+        } else {
+          for (const t of items) {
+            const li = document.createElement('li');
+            if (t.done) li.classList.add('done');
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = t.done;
+            cb.addEventListener('change', () => toggle(t.id));
+
+            const span = document.createElement('span');
+            span.className = 'text';
+            span.textContent = t.text;
+
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'del';
+            del.textContent = '삭제';
+            del.addEventListener('click', () => remove(t.id));
+
+            li.append(cb, span, del);
+            $list.appendChild(li);
+          }
+        }
+
+        const remaining = todos.filter((t) => !t.done).length;
+        $count.textContent = `${remaining}개 남음`;
+      }
+
+      function add(text) {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        todos.push({ id: Date.now() + Math.random(), text: trimmed, done: false });
+        save();
+        render();
+      }
+
+      function toggle(id) {
+        const t = todos.find((t) => t.id === id);
+        if (!t) return;
+        t.done = !t.done;
+        save();
+        render();
+      }
+
+      function remove(id) {
+        todos = todos.filter((t) => t.id !== id);
+        save();
+        render();
+      }
+
+      function clearDone() {
+        todos = todos.filter((t) => !t.done);
+        save();
+        render();
+      }
+
+      $form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        add($input.value);
+        $input.value = '';
+        $input.focus();
+      });
+
+      $clearDone.addEventListener('click', clearDone);
+
+      $filters.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          filter = btn.dataset.filter;
+          $filters.forEach((b) => b.classList.toggle('active', b === btn));
+          render();
+        });
+      });
+
+      render();
+    </script>
+  </body>
+</html>
